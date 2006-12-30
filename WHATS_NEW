@@ -13,8 +13,13 @@ always favored during branch point selection. This is useful when you
 know some variables are always dependent and should not be chosen as
 branches.
 
-Probably some other stuff that I can't remember, though probably
-nothing particularly significant.
+Optimized the redundant clause checking preprocessing phase.
+
+Made all preprocessing phases offer some progress indication, and also
+check for timeouts.
+
+There are other changes whose exact details I don't remember, though
+probably nothing particularly significant.
 
 v2.00:
 
