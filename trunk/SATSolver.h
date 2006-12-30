@@ -194,7 +194,7 @@ private:
 
   // Private data
   VariableID _eLastWasBranch;
-  clock_t _iLastRestart;
+  time_t _iLastRestart;
 
   BigNum _xSolutionCount;
   BigNum _xKnownSolutions;
@@ -251,7 +251,8 @@ private:
   float _fFudgeFactor;
   boolean _bFindAll;
   long int _iMaxSolutions;
-  clock_t _iRestartInterval;
+  time_t _iRestartInterval;
+  time_t iLastRestart;
   int _iRestartIncrement;
   boolean _bRestarts;
   int _iRelevantClauses;

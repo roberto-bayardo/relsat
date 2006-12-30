@@ -98,7 +98,7 @@ void SATSolver::vSetPrintStackPeriod(long int iSeconds_)
 
 void SATSolver::vSetRestartInterval(int iSeconds_)
 {
-  _iRestartInterval = (clock_t) (iSeconds_ * CLOCKS_PER_SEC);
+  _iRestartInterval = iSeconds_;
   _bRestarts = 1;
 }
 
@@ -122,7 +122,7 @@ void SATSolver::vOutputWarnings()
     xOutputStream << "c Solution phase timeout after: " << _iMaxTime << " seconds." << endl;
   }
   if (_bRestarts) {
-    xOutputStream << "c Restart interval: " << _iRestartInterval/CLOCKS_PER_SEC << " seconds." << endl;
+    xOutputStream << "c Restart interval: " << _iRestartInterval << " seconds." << endl;
     if (_iRestartIncrement) {
       xOutputStream << "c Restart interval increment: " << _iRestartIncrement << " seconds." << endl;
     }
@@ -303,7 +303,8 @@ boolean SATSolver::_bRestartLoop(boolean& bFailed_)
 {
   bFailed_ = 0;
   boolean bReturnValue = 0;
-  clock_t iLastRestart = clock();
+  time(&iLastRestart);
+  time_t now;
   while (1) {
     if (_bTimeLimitExpired()) {
       bFailed_ = 1;
@@ -312,16 +313,17 @@ boolean SATSolver::_bRestartLoop(boolean& bFailed_)
     if (_bPrintStackCheck()) {
       _vPrintStack();
     }
-    if (clock() - iLastRestart > _iRestartInterval) {
-      _iRestartInterval += (clock_t) (_iRestartIncrement * CLOCKS_PER_SEC);
+    time(&now);
+    if (now - iLastRestart > _iRestartInterval) {
+      _iRestartInterval += _iRestartIncrement;
       xOutputStream << "c   Restarting. Next restart in "
-		    << (int) (_iRestartInterval/CLOCKS_PER_SEC)
+		    << _iRestartInterval
 		    << " seconds. " <<endl;
       VariableStruct* pWork = _pBackupToFirstBranch();
       if (_bNonTrivialUnitPropagate(pWork->xUnitClause) || _bUnitPropagate()) {
 	return 0;
       }
-      iLastRestart = clock();
+      time(&iLastRestart);
     }
     VariableID eBestID;
     boolean bZeroFirst;
