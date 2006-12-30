@@ -54,20 +54,23 @@ boolean SATSolver::bPreprocess(int iLevel_, int iIterationBound_)
   xOutputStream << "c Processing instance: sorting clauses..." << flush;
   _pInstance->vSortClausesByLength();
   xOutputStream << "\nc   removing redundancies..." << flush;
+  int iClausesRemoved = 0;
   int i;
   for (i=1; i<_pInstance->iClauseCount(); i++) {
     Clause* pCheck = _pInstance->pClause(i);
     if (pCheck->bIsEqual(*(_pInstance->pClause(i-1)))) {
       pCheck->vFlagAsDeleted(); // duplicate clause
+      iClausesRemoved++;
     }
   }
-  _vRemoveRedundancies(0);
-  _vCleanClauseLists(); 
+  _vRemoveRedundancies(0, iClausesRemoved);
+  xOutputStream << iClausesRemoved << " redundant clauses eliminated." << flush;
+  _vCleanClauseLists();
 
   boolean bContinue;
   do {
     bContinue = 0;
-    xOutputStream << "\nc   unit reducing..." << flush; 
+    xOutputStream << "\nc   unit reducing..." << flush;
     int iNewUnaryClauses;
     if (_bUnitReduce(iNewUnaryClauses)) {
       _vCleanup(_iElapsedTime, iInitialClauseCount);
@@ -140,7 +143,7 @@ void SATSolver::_vCleanClauseLists()
 {
   for (int i=0; i<_iVariableCount; i++) {
     _aVariableStruct[i].xPositiveClauses.vRemoveDeletedClauses();
-    _aVariableStruct[i].xNegativeClauses.vRemoveDeletedClauses();    
+    _aVariableStruct[i].xNegativeClauses.vRemoveDeletedClauses();
   }
 }
 
@@ -149,7 +152,7 @@ void SATSolver::_vCleanup(time_t iStart_, int iInitialClauseCount)
   xOutputStream << "\nc Processing phase stats: " << endl;
   xOutputStream << "c   Initial clause count       : " << iInitialClauseCount << endl;
   _pInstance->vDestroyDeletedClauses();
-  xOutputStream << "c   New clause count           : " 
+  xOutputStream << "c   New clause count           : "
        << _pInstance->iClauseCount()
        << endl;
   time_t iEnd;
@@ -194,15 +197,17 @@ boolean SATSolver::_bRedundancyCheck(Clause* pNewClause_)
   return 0;
 }
 
-void SATSolver::_vOneSidedRedundancyCheck(Clause* pClause_)
+void SATSolver::_vOneSidedRedundancyCheck(Clause* pClause_, int& iClausesRemoved_)
 {
   // Check only if pClause_ makes other clauses redundant.
   Clause** pStart;
   Clause** pEnd;
-  for (int i=0; i<pClause_->iVariableCount(); i++) {
-    VariableID iVar = pClause_->eConstrainedVariable(i);
+  //for (int i=0; i<pClause_->iVariableCount(); i++) {
+  //VariableID iVar = pClause_->eConstrainedVariable(i);
+  VariableID iVar = pClause_->eConstrainedVariable(0);
     ClauseList* pCheckList;
-    if (pClause_->iIsNegated(i)) {
+    //if (pClause_->iIsNegated(i)) {
+    if (pClause_->iIsNegated(0)) {
       pStart = _aVariableStruct[iVar].xNegativeClauses.pEntry(0);
       pEnd = _aVariableStruct[iVar].xNegativeClauses.pLastEntry();
     }
@@ -214,17 +219,18 @@ void SATSolver::_vOneSidedRedundancyCheck(Clause* pClause_)
       if (*pStart != pClause_ && !(*pStart)->bIsDeleted()) {
 	if(_bMakesRedundant(pClause_, *pStart)) {
 	  (*pStart)->vFlagAsDeleted();
+          ++iClausesRemoved_;
 	}
       }
     }
-  }
+    //}
 }
 
 int SATSolver::_iRedundancyCheck(Clause* pClause1_, Clause* pClause2_)
 {
   // Returns 1 if pClause1_ is redundant, and 2 if pClause2_ is redundant.
   // Returns 0 otherwise
-  
+
   _pSet0->vClear();
   _pSet1->vClear();
   int i;
@@ -247,11 +253,11 @@ int SATSolver::_iRedundancyCheck(Clause* pClause1_, Clause* pClause2_)
       _pSet1->vAddVariableNoCheck(pClause1_->eConstrainedVariable(i));
     }
   }
- 
+
   for (i=0; i<pClause2_->iVariableCount(); i++) {
     if (pClause2_->iIsNegated(i)) {
       if (!_pSet0->bHasVariable(pClause2_->eConstrainedVariable(i))) {
-	return 0; 
+	return 0;
       }
     }
     else {
@@ -275,7 +281,7 @@ boolean SATSolver::_bMakesRedundant(Clause* pClause1_, Clause* pClause2_)
   // Returns 0 otherwise.
   // Does not detect duplicate clauses.
   // Assumes variables of each clause are sorted.
-  
+
   assert(pClause1_->iVariableCount()); // assumes no null clause
   if (pClause2_->iVariableCount() <= pClause1_->iVariableCount()) {
     return 0;
@@ -284,7 +290,7 @@ boolean SATSolver::_bMakesRedundant(Clause* pClause1_, Clause* pClause2_)
   int i = 0;
   while (1) {
     if (pClause1_->eConstrainedLiteral(i) == pClause2_->eConstrainedLiteral(iDiff)) {
-      i++; 
+      i++;
       if (i == pClause1_->iVariableCount()) {
 	return 1;
       }
@@ -343,15 +349,15 @@ boolean SATSolver::_bResolve(Clause* pClause_, int& iCount_)
   return 0;
 }
 
-Clause* SATSolver::_pResolve(Clause* pClause1_, 
-			     Clause* pClause2_, 
+Clause* SATSolver::_pResolve(Clause* pClause1_,
+			     Clause* pClause2_,
 			     VariableID iResolveVariable_)
 {
   int iMaximumLength;
   if (pClause1_->iVariableCount() < pClause2_->iVariableCount()) {
     iMaximumLength = pClause2_->iVariableCount() - 1;
   }
-  else { 
+  else {
     iMaximumLength = pClause1_->iVariableCount() - 1;
   }
   if (iMaximumLength < MAX_CLAUSE_LENGTH &&
@@ -434,7 +440,7 @@ done:
   Clause* pNew = new Clause(*(VariableList*)_pSet1, *(VariableList*)_pSet0, 1);
 
   /*  pClause1_->vOutput(xOutputStream);
-  cout << " and ";  
+  cout << " and ";
   pClause2_->vOutput(xOutputStream);
   cout << " make: ";
   pNew->vOutput(xOutputStream);
@@ -542,7 +548,7 @@ boolean SATSolver::_bBinaryInfer(int& iNewClauses_)
     if (!_aVariableStruct[i].pReason) {
       if (_aBinaryCount1[i]) {
 	if (_bBinaryReduce(i, 0, iNewClauses_))
-	  return 1;      
+	  return 1;
       }
     }
     fI += _iVariableCount-i;
@@ -636,7 +642,7 @@ int SATSolver::_iFastUnitPropagate(VariableID& eUnitVar_)
 	    eID = pReduceMe->eConstrainedVariable(j);
 	    if (_aAssignment[eID] == NON_VALUE) {
 	      _pUnitList->vAdd(eID);
-	      if (pReduceMe->iIsNegated(j)) {	    
+	      if (pReduceMe->iIsNegated(j)) {
 		_aAssignment[eID] = 0;
 		if (!_pNegativeBackup->bAddVariable(eID)) {
 		  // found a unit var.
@@ -712,7 +718,7 @@ boolean SATSolver::_bFastUnitPropagate()
 	    eID = pReduceMe->eConstrainedVariable(j);
 	    if (_aAssignment[eID] == NON_VALUE) {
 	      _pUnitList->vAdd(eID);
-	      if (pReduceMe->iIsNegated(j)) {	    
+	      if (pReduceMe->iIsNegated(j)) {
 		_aAssignment[eID] = 0;
 	      }
 	      else {
@@ -729,13 +735,24 @@ boolean SATSolver::_bFastUnitPropagate()
   return 0;
 }
 
-void SATSolver::_vRemoveRedundancies(int iStartIndex_)
+void SATSolver::_vRemoveRedundancies(int iStartIndex_, int& iClausesRemoved_)
 {
+  iClausesRemoved_ = 0;
   int i;
   for (i=iStartIndex_; i<_pInstance->iClauseCount(); i++) {
     Clause* pCheck = _pInstance->pClause(i);
     if (!pCheck->bIsDeleted()) {
-      _vOneSidedRedundancyCheck(pCheck);
+      _vOneSidedRedundancyCheck(pCheck, iClausesRemoved_);
+    }
+    if (_bTimeLimitExpired()) {
+      xOutputStream << "timeout. ";
+      return;
+    }
+    if (_bPrintStackCheck()) {
+	double fPercent = ((double)(i-iStartIndex_) /
+                           (double)(_pInstance->iClauseCount()-iStartIndex_))
+                           * 100.0;
+	xOutputStream << (int) fPercent << "%.." << flush;
     }
   }
 }
@@ -746,11 +763,19 @@ boolean SATSolver::_bUnitReduce(int& iNewClauses_)
     return 1;
   }
   iNewClauses_ = 0;
-  boolean bAgain;
+  boolean bAgain = 0;
   VariableID eOtherUnitVar;
   do {
     bAgain = 0;
     for (int i=0; i<_iVariableCount; i++) {
+      if (_bTimeLimitExpired()) {
+        xOutputStream << "timeout. ";
+        return 0;
+      }
+      if (_bPrintStackCheck()) {
+        // Is there a reasonable way to estimate % done?
+        xOutputStream << "." << flush;
+      }
       VariableID iVar = i;
       _pPositiveBackup->vClear();
       _pNegativeBackup->vClear();
@@ -786,7 +811,7 @@ boolean SATSolver::_bUnitReduce(int& iNewClauses_)
 	}
       }
       if (!_aVariableStruct[iVar].pReason) {
-	if (_aScore0[iVar] != -1 && _aBinaryCount0[iVar]) { 
+	if (_aScore0[iVar] != -1 && _aBinaryCount0[iVar]) {
 	  _pUnitList->vAdd(iVar);
 	  _aAssignment[iVar] = 1;
 	  int iResult = _iFastUnitPropagate(eOtherUnitVar);
@@ -886,7 +911,7 @@ boolean SATSolver::_bBinaryReduce(VariableID eWith_, DomainValue lWhich_, int& i
     _pPositiveBackup->vClear();
     _pNegativeBackup->vClear();
     if (!_aVariableStruct[iVar].pReason) {
-      if (_aScore1[iVar] != -1 
+      if (_aScore1[iVar] != -1
 	  //&& _aBinaryCount1[iVar]
 	  && _aBinaryCount1[iVar] > _aScore1[iVar]
 	  ) {
@@ -920,7 +945,7 @@ boolean SATSolver::_bBinaryReduce(VariableID eWith_, DomainValue lWhich_, int& i
 	    if (_bUnitPropagate()) {
 	      return 1;
 	    }
-	    return 0;	
+	    return 0;
 	  } // _bUnitPropagate
 	  assert(_aAssignment[iVar] != NON_VALUE);
 	  _pSet0->vClear();
@@ -948,10 +973,10 @@ boolean SATSolver::_bBinaryReduce(VariableID eWith_, DomainValue lWhich_, int& i
 	} // _iFastUnitPropagate
       }
       if (!_aVariableStruct[iVar].pReason) {
-	if (_aScore0[iVar] != -1 
+	if (_aScore0[iVar] != -1
 	    //&& _aBinaryCount0[iVar]
 	    && _aBinaryCount0[iVar] > _aScore0[iVar]
-	    ) { 
+	    ) {
 	  _pUnitList->vAdd(iVar);
 	  _aAssignment[iVar] = 1;
 
@@ -1000,7 +1025,7 @@ boolean SATSolver::_bBinaryReduce(VariableID eWith_, DomainValue lWhich_, int& i
 	      if (_bUnitPropagate()) {
 		return 1;
 	      }
-	      return 0;	
+	      return 0;
 	    }
 	    if (lWhich_) {
 	      _pSet0->vAddVariableNoCheck(eWith_);

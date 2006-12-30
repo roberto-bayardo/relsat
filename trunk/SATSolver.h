@@ -177,7 +177,7 @@ private:
   int _iFastUnitPropagate(VariableID& eUnit_);
   boolean _bMakesRedundant(Clause* pClause1_, Clause* pClause2_);
   boolean _bRedundancyCheck(Clause* pClause_);
-  void _vOneSidedRedundancyCheck(Clause* pClause_);
+  void _vOneSidedRedundancyCheck(Clause* pClause_, int& iClausesRemoved_);
   int _iRedundancyCheck(Clause* pClause1_, Clause* pClause2_);
   boolean _bResolve(Clause* pClause_, int& iCount_);
   boolean _bResolve(int& iCount_);
@@ -186,7 +186,7 @@ private:
 		    VariableID iResolveVariable_);
   boolean _bUnitReduce(int& iNewClauses_);
   boolean _bBinaryReduce(VariableID eWith_, DomainValue lWhich_, int& iNewClauses_);
-  void _vRemoveRedundancies(int iStartIndex_);
+  void _vRemoveRedundancies(int iStartIndex_, int& iClausesRemoved);
   Clause* _pReduceClause(Clause* pReduceMe_);
   boolean _bReduceClauses(int& iNewClauses_);
   boolean _bBinaryInfer(int& iNewClauses_);
@@ -269,4 +269,3 @@ inline double SATSolver::_iCombineScores(double i1_, double i2_)
 }
 
 #endif // SATSolver_h
-
