@@ -8,12 +8,8 @@
 /////////////////
 // OS Includes
 #include <assert.h>
-#ifdef MICROSOFT // Microsoft Visual C++ doesn't have "stream.h" but only "ostream/istream.h"
-#include <ostream.h>
-#else
 #include <iostream>
 using namespace std;
-#endif
 
 //////////////
 // Includes
