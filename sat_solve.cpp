@@ -302,6 +302,8 @@ void invoke_relsat(int iArgc_, const char* aArgv_[], ostream& xOutputStream_, in
 	    xOutputStream_ << "Failed to open output instance!" << endl;
 	    return;
 	  }
+          xInstance.vDestroyDeletedClauses();
+          xInstance.vSortClausesByLength();
 	  xInstance.vOutputDimacs(xNewInstance);
 	  xOutputStream_ << "..done." << endl;
 	}

@@ -569,13 +569,15 @@ Clause* SATSolver::_pReduceClause(Clause* pReduceMe_)
     for (int j=0; j<pReduceMe_->iVariableCount(); j++) {
       if (j!=i) {
 	VariableID iVar = pReduceMe_->eConstrainedVariable(j);
-	_pUnitList->vAdd(iVar);
-	if (pReduceMe_->iIsNegated(j)) {
-	  _aAssignment[iVar] = 1;
-	}
-	else {
-	  _aAssignment[iVar] = 0;
-	}
+        if (!_aVariableStruct[iVar].pReason) {
+          _pUnitList->vAdd(iVar);
+          if (pReduceMe_->iIsNegated(j)) {
+            _aAssignment[iVar] = 1;
+          }
+          else {
+            _aAssignment[iVar] = 0;
+          }
+        }
       }
     }
     if (_bFastUnitPropagate()) {
@@ -584,12 +586,14 @@ Clause* SATSolver::_pReduceClause(Clause* pReduceMe_)
       for (int k=0; k<pReduceMe_->iVariableCount(); k++) {
 	if (k!=i) {
 	  VariableID iVar = pReduceMe_->eConstrainedVariable(k);
-	  if (pReduceMe_->iIsNegated(k)) {
-	    _pSet0->vAddVariableNoCheck(iVar);
-	  }
-	  else {
-	    _pSet1->vAddVariableNoCheck(iVar);
-	  }
+          if (!_aVariableStruct[iVar].pReason) {
+            if (pReduceMe_->iIsNegated(k)) {
+              _pSet0->vAddVariableNoCheck(iVar);
+            }
+            else {
+              _pSet1->vAddVariableNoCheck(iVar);
+            }
+          }
 	}
       } // for (int k
       Clause* pReducedClause =  new Clause(*(VariableList*)_pSet1, *(VariableList*)_pSet0, (int)1);
