@@ -1,0 +1,1 @@
+relsat is a program for solving instances of the propositional satisfiability problem (SAT). For a given input instance, it can be used to determine satisfiability, output any number of solutions (should they exist), or determine the exact number of solutions.
